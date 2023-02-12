@@ -13,6 +13,7 @@ export class PhotoService {
   constructor() { }
 
   public photos: UserPhoto[] = [];
+  private PHOTO_STORAGE: string = 'photos';
 
   private async readAsBase64(photo: Photo) {
     const response = await fetch(photo.webPath!);
@@ -47,6 +48,21 @@ export class PhotoService {
     };
   }
 
+  public async loadSaved() {
+    const photoList = await Preferences.get({ key: this.PHOTO_STORAGE });
+    this.photos = JSON.parse(photoList.value || '') || [];
+
+    for(let photo of this.photos) {
+      const readFile = await Filesystem.readFile({
+        path: photo.filepath,
+        directory: Directory.Data
+      });
+
+      photo.webviewPath = `data:image/jpeg;base64,${readFile.data}`;
+    }
+
+  }
+
   public async addNewToGallery() {
     const capturedPhoto = await Camera.getPhoto(
       {
@@ -59,10 +75,10 @@ export class PhotoService {
     const savedImageFile = await this.savePicture(capturedPhoto);
     this.photos.unshift(savedImageFile);
 
-    // this.photos.unshift({
-    //   filepath: "soon...",
-    //   webviewPath: capturedPhoto.webPath
-    // });
+    Preferences.set({
+      key: this.PHOTO_STORAGE,
+      value: JSON.stringify(this.photos),
+    });
   }
 }
 
